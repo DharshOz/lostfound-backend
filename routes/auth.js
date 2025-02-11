@@ -31,24 +31,47 @@ router.post("/login", async (req, res) => {
         res.status(500).json({ message: "Server error" });
     }
 });
+// Signup route
+router.post('/signup', async (req, res) => {
+    const { username, email, phone, profession, location, password } = req.body;
 
-// ✅ Signup Route
-router.post("/signup", async (req, res) => {
+    // Check for missing required fields
+    if (!username || !email || !phone || !profession || !location || !location.state || !location.district || !password) {
+        return res.status(400).json({
+            error: 'Missing required fields',
+            missingFields: {
+                username: !username,
+                email: !email,
+                phone: !phone,
+                profession: !profession,
+                location: !location,
+                locationState: !location?.state,
+                locationDistrict: !location?.district,
+                password: !password
+            }
+        });
+    }
+
+    // Hash the password before saving
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create a new user instance
+    const newUser = new User({
+        username,
+        email,
+        phone,
+        profession,
+        location,
+        password: hashedPassword
+    });
+
     try {
-        const { username, email, password } = req.body;
-        const existingUser = await User.findOne({ email });
-
-        if (existingUser) return res.status(400).json({ message: "Email already registered" });
-
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const newUser = new User({ username, email, password: hashedPassword });
+        // Save the user to the database
         await newUser.save();
-
-        res.status(201).json({ message: "User registered successfully" });
-
+        res.status(201).json({ message: 'User created successfully' });
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: "Server error" });
+        console.error('Error saving user:', err);
+        res.status(500).json({ error: 'Error saving user', details: err });
     }
 });
 
