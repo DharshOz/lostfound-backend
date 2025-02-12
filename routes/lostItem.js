@@ -2,15 +2,16 @@ const express = require("express");
 const router = express.Router();
 const LostItem = require("../models/LostItem");
 const multer = require("multer");
+const cloudinary = require("cloudinary").v2;
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
 
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, "uploads/"); // Save files in the 'uploads' folder
+// Configure Cloudinary storage for multer
+const storage = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+        folder: "lost-found-app", // Folder in Cloudinary
+        allowed_formats: ["jpg", "jpeg", "png"], // Allowed file formats
     },
-    filename: function (req, file, cb) {
-        cb(null, Date.now() + "-" + file.originalname); // Unique filename
-    }
 });
 
 const upload = multer({ storage });
@@ -27,13 +28,13 @@ router.post("/", upload.single("image"), async (req, res) => {
             return res.status(400).json({ message: "Please provide at least one location." });
         }
 
-        // Get the uploaded image path
+        // Get the Cloudinary image URL
         const image = req.file ? req.file.path : null;
 
         const lostItem = new LostItem({
             user,
             name,
-            image,
+            image, // Store the Cloudinary URL
             locations: locationsArray,
             description,
             category,
