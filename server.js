@@ -2,8 +2,9 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const dotenv = require("dotenv");
+const multer = require("multer");
 const authRoutes = require("./routes/auth");
-const lostItemRoutes = require("./routes/lostItem"); // ✅ Import Lost Item Routes
+const lostItemRoutes = require("./routes/lostItem");
 
 dotenv.config();
 
@@ -17,7 +18,7 @@ app.use(express.json());
 
 // ✅ Use API Routes
 app.use("/api/auth", authRoutes);
-app.use("/api/lostitems", lostItemRoutes); // ✅ Add Lost Item Routes
+app.use("/api/lostitems", lostItemRoutes);
 
 // ✅ MongoDB Connection
 mongoose.connect(process.env.MONGO_URI, {
