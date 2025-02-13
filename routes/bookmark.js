@@ -1,16 +1,21 @@
 const express = require("express");
 const router = express.Router();
 const Bookmark = require("../models/Bookmark");
+const LostItem = require("../models/LostItem");
 
-// ✅ Add a bookmark
+// ✅ Bookmark an item
 router.post("/", async (req, res) => {
     try {
-        const { user, lostItem } = req.body;
+        const { userId, lostItemId } = req.body;
 
-        const existingBookmark = await Bookmark.findOne({ user, lostItem });
-        if (existingBookmark) return res.status(400).json({ message: "Item already bookmarked" });
+        // Check if the item is already bookmarked
+        const existingBookmark = await Bookmark.findOne({ user: userId, lostItem: lostItemId });
+        if (existingBookmark) {
+            return res.status(400).json({ message: "Item already bookmarked." });
+        }
 
-        const bookmark = new Bookmark({ user, lostItem });
+        // Create a new bookmark
+        const bookmark = new Bookmark({ user: userId, lostItem: lostItemId });
         await bookmark.save();
 
         res.status(201).json({ message: "Item bookmarked successfully", bookmark });
@@ -33,8 +38,9 @@ router.get("/:userId", async (req, res) => {
 router.delete("/:id", async (req, res) => {
     try {
         const deletedBookmark = await Bookmark.findByIdAndDelete(req.params.id);
-        if (!deletedBookmark) return res.status(404).json({ message: "Bookmark not found" });
-
+        if (!deletedBookmark) {
+            return res.status(404).json({ message: "Bookmark not found." });
+        }
         res.json({ message: "Bookmark removed successfully" });
     } catch (err) {
         res.status(500).json({ message: "Server error", error: err.message });

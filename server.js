@@ -37,7 +37,10 @@ const upload = multer({ storage });
 // Routes
 const authRoutes = require("./routes/auth");
 const lostItemRoutes = require("./routes/lostItem");
+const bookmarkRoutes = require("./routes/bookmark");
 
+// Use API Routes
+app.use("/api/bookmarks", bookmarkRoutes);
 // Use API Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/lostitems", lostItemRoutes);
