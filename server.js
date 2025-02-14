@@ -5,20 +5,23 @@ const dotenv = require("dotenv");
 const multer = require("multer");
 const cloudinary = require("cloudinary").v2;
 const { CloudinaryStorage } = require("multer-storage-cloudinary");
-const http = require("http"); // Add this for Socket.IO
-const socketIo = require("socket.io"); // Add this for Socket.IO
+const http = require("http");
+const socketIo = require("socket.io");
 
 // Load environment variables
 dotenv.config();
 
 // Initialize Express app
 const app = express();
-const server = http.createServer(app); // Create an HTTP server
+const server = http.createServer(app);
+
+// Configure Socket.IO to work behind a reverse proxy (Render)
 const io = socketIo(server, {
     cors: {
         origin: "*", // Allow all origins (update this in production)
     },
-}); // Initialize Socket.IO
+    path: "/socket.io/", // Ensure this matches the path in the frontend
+});
 
 // Middleware
 app.use(cors()); // Enable CORS
