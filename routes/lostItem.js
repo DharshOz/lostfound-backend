@@ -80,7 +80,7 @@ router.get("/", async (req, res) => {
 // ✅ **GET: Fetch a lost item by ID**
 router.get("/:id", async (req, res) => {
     try {
-        const lostItem = await LostItem.findById(req.params.id);
+        const lostItem = await LostItem.findById(req.params.id).populate("user", "username");
 
         if (!lostItem) {
             return res.status(404).json({ message: "Lost item not found." });
