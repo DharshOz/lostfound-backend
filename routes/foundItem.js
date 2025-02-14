@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const FoundItem = require("../models/FoundItem");
+const User = require("../models/User");
 const multer = require("multer");
 const cloudinary = require("cloudinary").v2;
 const { CloudinaryStorage } = require("multer-storage-cloudinary");
@@ -22,10 +23,11 @@ router.post("/", upload.single("image"), async (req, res) => {
         const { lostPerson, foundPerson, foundPersonPhone, locationFound, dateFound, name, description } = req.body;
         const image = req.file ? req.file.path : null;
 
+        // Create the found item
         const foundItem = new FoundItem({
             lostPerson,
             foundPerson,
-            foundPersonPhone, // Include found person's phone number
+            foundPersonPhone,
             locationFound,
             dateFound,
             name,
@@ -34,12 +36,28 @@ router.post("/", upload.single("image"), async (req, res) => {
         });
 
         await foundItem.save();
+
+        // Add a notification to the lost person
+        const lostUser = await User.findById(lostPerson);
+        if (lostUser) {
+            const notification = {
+                message: `Your lost item "${name}" has been reported as found by ${foundPerson.username}.`,
+            };
+            lostUser.notifications.push(notification);
+            await lostUser.save();
+
+            // Emit a real-time notification to the lost person
+            req.app.get("io").to(lostPerson).emit("notification", notification);
+        }
+
         res.status(201).json({ message: "Found item reported successfully", foundItem });
     } catch (err) {
         res.status(500).json({ message: "Server error", error: err.message });
     }
 });
 
+// Other routes...
+module.exports = router;
 // ✅ Get all found items
 router.get("/", async (req, res) => {
     try {

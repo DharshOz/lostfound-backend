@@ -5,12 +5,20 @@ const dotenv = require("dotenv");
 const multer = require("multer");
 const cloudinary = require("cloudinary").v2;
 const { CloudinaryStorage } = require("multer-storage-cloudinary");
+const http = require("http"); // Add this for Socket.IO
+const socketIo = require("socket.io"); // Add this for Socket.IO
 
 // Load environment variables
 dotenv.config();
 
 // Initialize Express app
 const app = express();
+const server = http.createServer(app); // Create an HTTP server
+const io = socketIo(server, {
+    cors: {
+        origin: "*", // Allow all origins (update this in production)
+    },
+}); // Initialize Socket.IO
 
 // Middleware
 app.use(cors()); // Enable CORS
@@ -39,15 +47,13 @@ const authRoutes = require("./routes/auth");
 const lostItemRoutes = require("./routes/lostItem");
 const bookmarkRoutes = require("./routes/bookmark");
 const foundItemRoutes = require("./routes/foundItem");
+
 // Use API Routes
 app.use("/api/bookmarks", bookmarkRoutes);
-// Use API Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/lostitems", lostItemRoutes);
-
-
-// Use API Routes
 app.use("/api/founditems", foundItemRoutes);
+
 // MongoDB Connection
 mongoose.connect(process.env.MONGO_URI, {
     useNewUrlParser: true,
@@ -56,6 +62,22 @@ mongoose.connect(process.env.MONGO_URI, {
 .then(() => console.log("Connected to MongoDB"))
 .catch(err => console.log("MongoDB Connection Error:", err));
 
+// Socket.IO Connection
+io.on("connection", (socket) => {
+    console.log("A user connected:", socket.id);
+
+    // Join a room based on user ID
+    socket.on("joinRoom", (userId) => {
+        socket.join(userId);
+        console.log(`User ${userId} joined room`);
+    });
+
+    // Handle disconnection
+    socket.on("disconnect", () => {
+        console.log("User disconnected:", socket.id);
+    });
+});
+
 // Start Server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));

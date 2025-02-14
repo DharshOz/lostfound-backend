@@ -10,7 +10,14 @@ const userSchema = new Schema({
         district: { type: String, required: true },
         state: { type: String, required: true }
     },
-    password: { type: String, required: true }
+    password: { type: String, required: true },
+    notifications: [
+        {
+            message: { type: String, required: true },
+            read: { type: Boolean, default: false },
+            createdAt: { type: Date, default: Date.now },
+        },
+    ],
 }, {
     timestamps: true
 });
