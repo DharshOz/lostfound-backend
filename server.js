@@ -38,13 +38,16 @@ const upload = multer({ storage });
 const authRoutes = require("./routes/auth");
 const lostItemRoutes = require("./routes/lostItem");
 const bookmarkRoutes = require("./routes/bookmark");
-
+const foundItemRoutes = require("./routes/foundItem");
 // Use API Routes
 app.use("/api/bookmarks", bookmarkRoutes);
 // Use API Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/lostitems", lostItemRoutes);
 
+
+// Use API Routes
+app.use("/api/founditems", foundItemRoutes);
 // MongoDB Connection
 mongoose.connect(process.env.MONGO_URI, {
     useNewUrlParser: true,

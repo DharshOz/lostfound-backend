@@ -1,17 +1,37 @@
 const express = require("express");
 const router = express.Router();
 const FoundItem = require("../models/FoundItem");
+const multer = require("multer");
+const cloudinary = require("cloudinary").v2;
+const { CloudinaryStorage } = require("multer-storage-cloudinary");
+
+// Configure Cloudinary storage for multer
+const storage = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+        folder: "found-items", // Folder in Cloudinary
+        allowed_formats: ["jpg", "jpeg", "png"], // Allowed file formats
+    },
+});
+
+const upload = multer({ storage });
 
 // ✅ Report a found item
-router.post("/", async (req, res) => {
+router.post("/", upload.single("image"), async (req, res) => {
     try {
-        const { lostPerson, foundPerson, locationsFound, dateFound, name, image, description } = req.body;
+        const { lostPerson, foundPerson, locationFound, dateFound, name, description } = req.body;
+        const image = req.file ? req.file.path : null;
 
-        if (!Array.isArray(locationsFound) || locationsFound.length === 0) {
-            return res.status(400).json({ message: "Please provide at least one location." });
-        }
+        const foundItem = new FoundItem({
+            lostPerson,
+            foundPerson,
+            locationFound,
+            dateFound,
+            name,
+            image,
+            description,
+        });
 
-        const foundItem = new FoundItem({ lostPerson, foundPerson, locationsFound, dateFound, name, image, description });
         await foundItem.save();
         res.status(201).json({ message: "Found item reported successfully", foundItem });
     } catch (err) {
@@ -19,6 +39,7 @@ router.post("/", async (req, res) => {
     }
 });
 
+module.exports = router;
 // ✅ Get all found items
 router.get("/", async (req, res) => {
     try {
