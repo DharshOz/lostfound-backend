@@ -127,7 +127,6 @@ router.post("/login", async (req, res) => {
         res.status(500).json({ message: "Server error" });
     }
 });
-
 // Signup route
 router.post('/signup', async (req, res) => {
     const { username, email, phone, profession, location, password } = req.body;

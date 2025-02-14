@@ -19,12 +19,13 @@ const upload = multer({ storage });
 // ✅ Report a found item
 router.post("/", upload.single("image"), async (req, res) => {
     try {
-        const { lostPerson, foundPerson, locationFound, dateFound, name, description } = req.body;
+        const { lostPerson, foundPerson, foundPersonPhone, locationFound, dateFound, name, description } = req.body;
         const image = req.file ? req.file.path : null;
 
         const foundItem = new FoundItem({
             lostPerson,
             foundPerson,
+            foundPersonPhone, // Include found person's phone number
             locationFound,
             dateFound,
             name,
@@ -39,7 +40,6 @@ router.post("/", upload.single("image"), async (req, res) => {
     }
 });
 
-module.exports = router;
 // ✅ Get all found items
 router.get("/", async (req, res) => {
     try {
