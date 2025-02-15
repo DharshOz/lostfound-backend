@@ -56,8 +56,6 @@ router.post("/", upload.single("image"), async (req, res) => {
     }
 });
 
-// Other routes...
-module.exports = router;
 // ✅ Get all found items
 router.get("/", async (req, res) => {
     try {
@@ -83,7 +81,6 @@ router.get("/:id", async (req, res) => {
         res.status(500).json({ message: "Server error", error: err.message });
     }
 });
-
 
 // ✅ Fetch found items (replies) for a specific lost item
 router.get("/lostItem/:lostItemId", async (req, res) => {

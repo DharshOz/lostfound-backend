@@ -62,7 +62,6 @@ router.post("/", upload.single("image"), async (req, res) => {
     }
 });
 
-
 // ✅ Fetch lost items reported by a specific user
 router.get("/user/:userId", async (req, res) => {
     try {
@@ -74,10 +73,6 @@ router.get("/user/:userId", async (req, res) => {
         res.status(500).json({ message: "Server error", error: err.message });
     }
 });
-
-
-
-
 
 // ✅ **GET: Fetch lost items by name, category, or district**
 router.get("/", async (req, res) => {
@@ -105,7 +100,6 @@ router.get("/", async (req, res) => {
         res.status(500).json({ message: "Server error", error: err.message });
     }
 });
-
 
 // ✅ **GET: Fetch a lost item by ID**
 router.get("/:id", async (req, res) => {

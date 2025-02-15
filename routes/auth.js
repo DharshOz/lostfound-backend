@@ -124,4 +124,38 @@ router.get("/user/:userId", async (req, res) => {
     }
 });
 
+// ✅ Update user profile
+router.put("/user/:userId", async (req, res) => {
+    try {
+        const userId = req.params.userId;
+        const { username, email, phone, profession, location } = req.body;
+
+        // Validate required fields
+        if (!username || !email || !phone || !profession || !location || !location.district || !location.state) {
+            return res.status(400).json({ message: "Missing required fields." });
+        }
+
+        // Find the user by ID
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: "User not found." });
+        }
+
+        // Update user details
+        user.username = username;
+        user.email = email;
+        user.phone = phone;
+        user.profession = profession;
+        user.location = location;
+
+        // Save the updated user
+        await user.save();
+
+        res.status(200).json({ message: "Profile updated successfully", user });
+    } catch (err) {
+        console.error("Error updating user profile:", err);
+        res.status(500).json({ message: "Server error", error: err.message });
+    }
+});
+
 module.exports = router;
