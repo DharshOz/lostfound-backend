@@ -84,6 +84,20 @@ router.get("/:id", async (req, res) => {
     }
 });
 
+
+// ✅ Fetch found items (replies) for a specific lost item
+router.get("/lostItem/:lostItemId", async (req, res) => {
+    try {
+        const lostItemId = req.params.lostItemId;
+        const foundItems = await FoundItem.find({ lostPerson: lostItemId })
+            .populate("foundPerson", "username email");
+        res.status(200).json(foundItems);
+    } catch (err) {
+        console.error("Error fetching found items by lost item:", err);
+        res.status(500).json({ message: "Server error", error: err.message });
+    }
+});
+
 // ✅ Update a found item
 router.put("/:id", async (req, res) => {
     try {

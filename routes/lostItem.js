@@ -62,21 +62,38 @@ router.post("/", upload.single("image"), async (req, res) => {
     }
 });
 
-// ✅ **GET: Fetch lost items by location, district, or state**
+
+// ✅ Fetch lost items reported by a specific user
+router.get("/user/:userId", async (req, res) => {
+    try {
+        const userId = req.params.userId;
+        const lostItems = await LostItem.find({ user: userId });
+        res.status(200).json(lostItems);
+    } catch (err) {
+        console.error("Error fetching lost items by user:", err);
+        res.status(500).json({ message: "Server error", error: err.message });
+    }
+});
+
+
+
+
+
+// ✅ **GET: Fetch lost items by name, category, or district**
 router.get("/", async (req, res) => {
     try {
-        const { location, district, state } = req.query;
+        const { name, category, district } = req.query;
 
         let filter = {};
 
-        if (location) {
-            filter.locations = { $regex: new RegExp(location, "i") };
+        if (name) {
+            filter.name = { $regex: new RegExp(name, "i") }; // Case-insensitive search
+        }
+        if (category) {
+            filter.category = { $regex: new RegExp(category, "i") };
         }
         if (district) {
             filter.district = { $regex: new RegExp(district, "i") };
-        }
-        if (state) {
-            filter.state = { $regex: new RegExp(state, "i") };
         }
 
         // Find lost items that match the filters
@@ -88,6 +105,7 @@ router.get("/", async (req, res) => {
         res.status(500).json({ message: "Server error", error: err.message });
     }
 });
+
 
 // ✅ **GET: Fetch a lost item by ID**
 router.get("/:id", async (req, res) => {
