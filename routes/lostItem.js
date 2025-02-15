@@ -26,13 +26,17 @@ const upload = multer({ storage });
 // ✅ **POST: Add a lost item**
 router.post("/", upload.single("image"), async (req, res) => {
     try {
-        const { user, name, locations, description, category, dateLost } = req.body;
+        const { user, name, locations, district, state, description, category, dateLost } = req.body;
 
         // Ensure locations is an array
         const locationsArray = Array.isArray(locations) ? locations : [locations];
 
         if (!locationsArray.length) {
             return res.status(400).json({ message: "Please provide at least one location." });
+        }
+
+        if (!district || !state) {
+            return res.status(400).json({ message: "District and state are required." });
         }
 
         // Get the Cloudinary image URL
@@ -43,6 +47,8 @@ router.post("/", upload.single("image"), async (req, res) => {
             name,
             image, 
             locations: locationsArray,
+            district,
+            state,
             description,
             category,
             dateLost
@@ -56,19 +62,25 @@ router.post("/", upload.single("image"), async (req, res) => {
     }
 });
 
-// ✅ **GET: Fetch lost items by location**
+// ✅ **GET: Fetch lost items by location, district, or state**
 router.get("/", async (req, res) => {
     try {
-        const { location } = req.query;
+        const { location, district, state } = req.query;
 
-        if (!location) {
-            return res.status(400).json({ message: "Location parameter is required." });
+        let filter = {};
+
+        if (location) {
+            filter.locations = { $regex: new RegExp(location, "i") };
+        }
+        if (district) {
+            filter.district = { $regex: new RegExp(district, "i") };
+        }
+        if (state) {
+            filter.state = { $regex: new RegExp(state, "i") };
         }
 
-        // Find lost items that match the location
-        const lostItems = await LostItem.find({
-            locations: { $regex: new RegExp(location, "i") } // Case-insensitive search
-        });
+        // Find lost items that match the filters
+        const lostItems = await LostItem.find(filter);
 
         res.status(200).json(lostItems);
     } catch (err) {
