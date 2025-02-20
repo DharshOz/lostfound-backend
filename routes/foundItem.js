@@ -95,6 +95,19 @@ router.get("/lostItem/:lostItemId", async (req, res) => {
     }
 });
 
+// ✅ Fetch found items reported by a specific user (foundPerson)
+router.get("/foundPerson/:foundPersonId", async (req, res) => {
+    try {
+        const foundPersonId = req.params.foundPersonId;
+        const foundItems = await FoundItem.find({ foundPerson: foundPersonId })
+            .populate("lostPerson", "username email"); // Populate lost person details
+        res.status(200).json(foundItems);
+    } catch (err) {
+        console.error("Error fetching found items by found person:", err);
+        res.status(500).json({ message: "Server error", error: err.message });
+    }
+});
+
 // ✅ Update a found item
 router.put("/:id", async (req, res) => {
     try {
