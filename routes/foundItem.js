@@ -119,4 +119,24 @@ router.delete("/:id", async (req, res) => {
     }
 });
 
+// ✅ Mark an item as found or not found
+router.put("/:id/found", async (req, res) => {
+    try {
+        const { found } = req.body;
+        const updatedFoundItem = await FoundItem.findByIdAndUpdate(
+            req.params.id,
+            { found },
+            { new: true }
+        );
+
+        if (!updatedFoundItem) {
+            return res.status(404).json({ message: "Found item not found" });
+        }
+
+        res.json({ message: "Found status updated successfully", updatedFoundItem });
+    } catch (err) {
+        res.status(500).json({ message: "Server error", error: err.message });
+    }
+});
+
 module.exports = router;

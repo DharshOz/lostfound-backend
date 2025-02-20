@@ -8,7 +8,8 @@ const FoundItemSchema = new mongoose.Schema({
     dateFound: { type: Date, required: true },
     name: { type: String, required: true },
     image: { type: String }, // Store the image URL or file path
-    description: { type: String, required: true }
+    description: { type: String, required: true },
+    found: { type: Boolean, default: false } // New field to indicate if the item is found
 }, { timestamps: true });
 
 module.exports = mongoose.model('FoundItem', FoundItemSchema);
