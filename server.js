@@ -50,8 +50,8 @@ const upload = multer({ storage });
 const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
-        user: 'smartcityprojectdl@gmail.com', // Using the email that works in your other project
-        pass: 'tbnrzmafuxxfnued' // Using the password that works in your other project
+        user: 'dharaneeshrajendran2004@gmail.com', // Using the email that works in your other project
+        pass: 'dyaznluepljrjrcq' // Using the password that works in your other project
     }
 });
 
