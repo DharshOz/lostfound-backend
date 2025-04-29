@@ -46,16 +46,18 @@ const storage = new CloudinaryStorage({
 
 const upload = multer({ storage });
 
-// Email Configuration with your new app password
+// Email Configuration with your new credentials
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false, // true for 465, false for other ports
     auth: {
         user: 'dharaneeshrajendran2004@gmail.com',
-        pass: 'dyaznluepljrjrcq' // Your new app password here
+        pass: 'dyaznluepljrjrcq' // Your new app password
     },
-    pool: true,
-    maxConnections: 1,
-    maxMessages: 10,
+    tls: {
+        rejectUnauthorized: false
+    },
     logger: true,
     debug: true
 });
@@ -69,6 +71,10 @@ transporter.verify(function(error, success) {
         }
     } else {
         console.log('SMTP Server is ready to take our messages');
+        // Keep connection alive
+        setInterval(() => {
+            transporter.verify();
+        }, 30000); // Verify every 30 seconds
     }
 });
 
@@ -83,12 +89,24 @@ async function processQueue() {
     const { mailOptions, resolve, reject } = emailQueue.shift();
     
     try {
-        console.log('Processing email to:', mailOptions.to);
+        console.log('\n===== PROCESSING EMAIL =====');
+        console.log('To:', mailOptions.to);
+        console.log('Subject:', mailOptions.subject);
+        
         const info = await transporter.sendMail(mailOptions);
-        console.log('Email sent successfully! Message ID:', info.messageId);
+        
+        console.log('Email sent successfully!');
+        console.log('Message ID:', info.messageId);
+        console.log('Preview URL:', nodemailer.getTestMessageUrl(info));
+        console.log('===========================\n');
+        
         resolve(info);
     } catch (error) {
-        console.error('Email send error:', error);
+        console.error('\nEMAIL SEND ERROR:');
+        console.error('Error:', error.message);
+        console.error('Stack:', error.stack);
+        console.error('===========================\n');
+        
         reject(error);
     } finally {
         isSending = false;
@@ -111,11 +129,15 @@ app.post("/api/send-email", async (req, res) => {
     }
 
     const mailOptions = {
-        from: 'smartcityprojectdl@gmail.com',
+        from: '"Lost & Found System" <dharaneeshrajendran2004@gmail.com>',
         to,
         subject,
         text: text || '(No text content provided)',
-        html: html || '(No HTML content provided)'
+        html: html || '(No HTML content provided)',
+        headers: {
+            'X-Priority': '1',
+            'Importance': 'high'
+        }
     };
 
     return new Promise((resolve, reject) => {
@@ -128,11 +150,15 @@ app.post("/api/send-email", async (req, res) => {
     }).then(info => {
         res.status(200).json({ 
             success: true, 
-            messageId: info.messageId 
+            messageId: info.messageId,
+            previewUrl: nodemailer.getTestMessageUrl(info)
         });
     }).catch(error => {
         let statusCode = 500;
-        let errorResponse = { error: error.message };
+        let errorResponse = { 
+            error: error.message,
+            code: error.code
+        };
         
         if (error.code === 'EAUTH') {
             statusCode = 401;
@@ -150,25 +176,36 @@ app.post("/api/send-email", async (req, res) => {
 app.get('/api/test-email', async (req, res) => {
     try {
         const testMail = {
-            to: 'smartcityprojectdl@gmail.com',
-            subject: 'Test Email from Lost & Found Server',
-            text: 'This is a test email from your Lost & Found server',
-            html: '<b>This is a test email from your Lost & Found server</b>'
+            to: 'dharaneeshrajendran2004@gmail.com',
+            subject: 'TEST EMAIL from Lost & Found System',
+            text: 'This is a test email sent from your Lost & Found system.',
+            html: `<div>
+                <h1>Lost & Found System Test</h1>
+                <p>This email confirms your email settings are working correctly.</p>
+                <p><strong>Server Time:</strong> ${new Date()}</p>
+            </div>`
         };
 
-        console.log('Sending test email...');
+        console.log('\n===== SENDING TEST EMAIL =====');
         const info = await transporter.sendMail(testMail);
+        
+        console.log('Test email sent successfully!');
+        console.log('Message ID:', info.messageId);
         
         res.json({
             success: true,
             message: 'Test email sent successfully',
-            messageId: info.messageId
+            messageId: info.messageId,
+            previewUrl: nodemailer.getTestMessageUrl(info)
         });
     } catch (error) {
-        console.error('Test email failed:', error);
+        console.error('\nTEST EMAIL FAILED:');
+        console.error(error);
+        
         res.status(500).json({
-            error: 'Failed to send test email',
-            details: error.message
+            success: false,
+            error: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
         });
     }
 });
@@ -208,4 +245,7 @@ io.on("connection", (socket) => {
 
 // Start Server
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+server.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+    console.log('Test email endpoint: GET /api/test-email');
+});
