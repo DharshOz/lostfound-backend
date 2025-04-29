@@ -7,7 +7,6 @@ const cloudinary = require("cloudinary").v2;
 const { CloudinaryStorage } = require("multer-storage-cloudinary");
 const http = require("http");
 const socketIo = require("socket.io");
-const nodemailer = require("nodemailer"); // Added nodemailer
 
 // Load environment variables
 dotenv.config();
@@ -45,36 +44,6 @@ const storage = new CloudinaryStorage({
 });
 
 const upload = multer({ storage });
-
-// Create Nodemailer transporter
-const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: 'smartcityprojectdl@gmail.com',
-        pass: 'tbnrzmafuxxfnued'
-    }
-});
-
-// Email sending route
-app.post("/api/send-email", async (req, res) => {
-    try {
-        const { to, subject, text, html } = req.body;
-
-        const mailOptions = {
-            from: 'smartcityprojectdl@gmail.com',
-            to,
-            subject,
-            text,
-            html
-        };
-
-        await transporter.sendMail(mailOptions);
-        res.status(200).json({ message: "Email sent successfully" });
-    } catch (error) {
-        console.error("Error sending email:", error);
-        res.status(500).json({ message: "Failed to send email", error: error.message });
-    }
-});
 
 // Routes
 const authRoutes = require("./routes/auth");
