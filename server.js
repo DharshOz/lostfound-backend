@@ -16,7 +16,7 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 
-// Configure Socket.IO to work behind a reverse proxy (Render)
+// Configure Socket.IO
 const io = socketIo(server, {
     cors: {
         origin: "*",
@@ -46,86 +46,130 @@ const storage = new CloudinaryStorage({
 
 const upload = multer({ storage });
 
-// Create Nodemailer transporter with debug logging
+// Email Configuration with your new app password
 const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
         user: 'smartcityprojectdl@gmail.com',
-        pass: 'tbnrzmafuxxfnued'
+        pass: 'ivkwgstowhvhgct' // Your new app password here
     },
-    logger: true, // Enable logging
-    debug: true   // Enable debug output
+    pool: true,
+    maxConnections: 1,
+    maxMessages: 10,
+    logger: true,
+    debug: true
 });
 
-// Verify transporter connection on startup
+// Verify transporter on startup
 transporter.verify(function(error, success) {
     if (error) {
         console.log('SMTP Connection Error:', error);
+        if (error.code === 'EAUTH') {
+            console.error('⚠️ Critical: Verify your app password at https://myaccount.google.com/apppasswords');
+        }
     } else {
         console.log('SMTP Server is ready to take our messages');
     }
 });
 
-// Enhanced email sending route with detailed logging
-app.post("/api/send-email", async (req, res) => {
-    console.log('\n===== EMAIL SEND REQUEST RECEIVED =====');
-    console.log('Request Body:', JSON.stringify(req.body, null, 2));
+// Email Queue System
+const emailQueue = [];
+let isSending = false;
+
+async function processQueue() {
+    if (isSending || emailQueue.length === 0) return;
+    
+    isSending = true;
+    const { mailOptions, resolve, reject } = emailQueue.shift();
     
     try {
-        const { to, subject, text, html } = req.body;
-
-        if (!to || !subject) {
-            console.error('Validation Error: Missing required fields');
-            return res.status(400).json({ 
-                message: "Missing required fields (to, subject)", 
-                received: { to, subject } 
-            });
-        }
-
-        console.log('\nPreparing email with options:');
-        const mailOptions = {
-            from: 'smartcityprojectdl@gmail.com',
-            to,
-            subject,
-            text: text || '(No plain text content provided)',
-            html: html || '(No HTML content provided)'
-        };
-        console.log('Mail Options:', mailOptions);
-
-        console.log('\nAttempting to send email...');
+        console.log('Processing email to:', mailOptions.to);
         const info = await transporter.sendMail(mailOptions);
-        
-        console.log('\nEmail sent successfully!');
-        console.log('Message ID:', info.messageId);
-        console.log('Preview URL:', nodemailer.getTestMessageUrl(info));
-        
+        console.log('Email sent successfully! Message ID:', info.messageId);
+        resolve(info);
+    } catch (error) {
+        console.error('Email send error:', error);
+        reject(error);
+    } finally {
+        isSending = false;
+        processQueue();
+    }
+}
+
+// Email Sending Endpoint
+app.post("/api/send-email", async (req, res) => {
+    console.log('\n===== EMAIL REQUEST RECEIVED =====');
+    console.log('Request Body:', JSON.stringify(req.body, null, 2));
+    
+    const { to, subject, text, html } = req.body;
+
+    if (!to || !subject) {
+        console.error('Validation Error: Missing required fields');
+        return res.status(400).json({ 
+            error: "Missing required fields (to, subject)"
+        });
+    }
+
+    const mailOptions = {
+        from: 'smartcityprojectdl@gmail.com',
+        to,
+        subject,
+        text: text || '(No text content provided)',
+        html: html || '(No HTML content provided)'
+    };
+
+    return new Promise((resolve, reject) => {
+        emailQueue.push({
+            mailOptions,
+            resolve,
+            reject
+        });
+        processQueue();
+    }).then(info => {
         res.status(200).json({ 
-            message: "Email sent successfully",
+            success: true, 
+            messageId: info.messageId 
+        });
+    }).catch(error => {
+        let statusCode = 500;
+        let errorResponse = { error: error.message };
+        
+        if (error.code === 'EAUTH') {
+            statusCode = 401;
+            errorResponse.solution = "Check Gmail credentials and app password settings";
+        } else if (error.code === 'EENVELOPE') {
+            statusCode = 400;
+            errorResponse.rejected = error.rejected;
+        }
+        
+        res.status(statusCode).json(errorResponse);
+    });
+});
+
+// Test Endpoint
+app.get('/api/test-email', async (req, res) => {
+    try {
+        const testMail = {
+            to: 'smartcityprojectdl@gmail.com',
+            subject: 'Test Email from Lost & Found Server',
+            text: 'This is a test email from your Lost & Found server',
+            html: '<b>This is a test email from your Lost & Found server</b>'
+        };
+
+        console.log('Sending test email...');
+        const info = await transporter.sendMail(testMail);
+        
+        res.json({
+            success: true,
+            message: 'Test email sent successfully',
             messageId: info.messageId
         });
     } catch (error) {
-        console.error('\nEMAIL SEND ERROR:', error);
-        console.error('Error Stack:', error.stack);
-        console.error('Full Error Object:', JSON.stringify(error, null, 2));
-        
-        // Special handling for authentication errors
-        if (error.code === 'EAUTH') {
-            console.error('AUTHENTICATION FAILED: Check email credentials');
-        }
-        
-        // Special handling for rate limit errors
-        if (error.code === 'EENVELOPE') {
-            console.error('RATE LIMIT EXCEEDED: Too many recipients');
-        }
-
-        res.status(500).json({ 
-            message: "Failed to send email",
-            error: error.message,
-            code: error.code,
-            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        console.error('Test email failed:', error);
+        res.status(500).json({
+            error: 'Failed to send test email',
+            details: error.message
         });
-    } finally {
-        console.log('===== EMAIL REQUEST PROCESSING COMPLETE =====\n');
     }
 });
 
@@ -135,7 +179,6 @@ const lostItemRoutes = require("./routes/lostItem");
 const bookmarkRoutes = require("./routes/bookmark");
 const foundItemRoutes = require("./routes/foundItem");
 
-// Use API Routes
 app.use("/api/bookmarks", bookmarkRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/lostitems", lostItemRoutes);
