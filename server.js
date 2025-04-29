@@ -7,7 +7,7 @@ const cloudinary = require("cloudinary").v2;
 const { CloudinaryStorage } = require("multer-storage-cloudinary");
 const http = require("http");
 const socketIo = require("socket.io");
-const nodemailer = require("nodemailer"); // Added nodemailer
+const nodemailer = require("nodemailer");
 
 // Load environment variables
 dotenv.config();
@@ -19,14 +19,14 @@ const server = http.createServer(app);
 // Configure Socket.IO to work behind a reverse proxy (Render)
 const io = socketIo(server, {
     cors: {
-        origin: "*", // Allow all origins (update this in production)
+        origin: "*",
     },
-    path: "/socket.io/", // Ensure this matches the path in the frontend
+    path: "/socket.io/",
 });
 
 // Middleware
-app.use(cors()); // Enable CORS
-app.use(express.json()); // Parse JSON request bodies
+app.use(cors());
+app.use(express.json());
 
 // Configure Cloudinary
 cloudinary.config({
@@ -39,40 +39,93 @@ cloudinary.config({
 const storage = new CloudinaryStorage({
     cloudinary: cloudinary,
     params: {
-        folder: "lost-found-app", // Folder in Cloudinary
-        allowed_formats: ["jpg", "jpeg", "png"], // Allowed file formats
+        folder: "lost-found-app",
+        allowed_formats: ["jpg", "jpeg", "png"],
     },
 });
 
 const upload = multer({ storage });
 
-// Create Nodemailer transporter
+// Create Nodemailer transporter with debug logging
 const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
         user: 'smartcityprojectdl@gmail.com',
         pass: 'tbnrzmafuxxfnued'
+    },
+    logger: true, // Enable logging
+    debug: true   // Enable debug output
+});
+
+// Verify transporter connection on startup
+transporter.verify(function(error, success) {
+    if (error) {
+        console.log('SMTP Connection Error:', error);
+    } else {
+        console.log('SMTP Server is ready to take our messages');
     }
 });
 
-// Email sending route
+// Enhanced email sending route with detailed logging
 app.post("/api/send-email", async (req, res) => {
+    console.log('\n===== EMAIL SEND REQUEST RECEIVED =====');
+    console.log('Request Body:', JSON.stringify(req.body, null, 2));
+    
     try {
         const { to, subject, text, html } = req.body;
 
+        if (!to || !subject) {
+            console.error('Validation Error: Missing required fields');
+            return res.status(400).json({ 
+                message: "Missing required fields (to, subject)", 
+                received: { to, subject } 
+            });
+        }
+
+        console.log('\nPreparing email with options:');
         const mailOptions = {
             from: 'smartcityprojectdl@gmail.com',
             to,
             subject,
-            text,
-            html
+            text: text || '(No plain text content provided)',
+            html: html || '(No HTML content provided)'
         };
+        console.log('Mail Options:', mailOptions);
 
-        await transporter.sendMail(mailOptions);
-        res.status(200).json({ message: "Email sent successfully" });
+        console.log('\nAttempting to send email...');
+        const info = await transporter.sendMail(mailOptions);
+        
+        console.log('\nEmail sent successfully!');
+        console.log('Message ID:', info.messageId);
+        console.log('Preview URL:', nodemailer.getTestMessageUrl(info));
+        
+        res.status(200).json({ 
+            message: "Email sent successfully",
+            messageId: info.messageId
+        });
     } catch (error) {
-        console.error("Error sending email:", error);
-        res.status(500).json({ message: "Failed to send email", error: error.message });
+        console.error('\nEMAIL SEND ERROR:', error);
+        console.error('Error Stack:', error.stack);
+        console.error('Full Error Object:', JSON.stringify(error, null, 2));
+        
+        // Special handling for authentication errors
+        if (error.code === 'EAUTH') {
+            console.error('AUTHENTICATION FAILED: Check email credentials');
+        }
+        
+        // Special handling for rate limit errors
+        if (error.code === 'EENVELOPE') {
+            console.error('RATE LIMIT EXCEEDED: Too many recipients');
+        }
+
+        res.status(500).json({ 
+            message: "Failed to send email",
+            error: error.message,
+            code: error.code,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        });
+    } finally {
+        console.log('===== EMAIL REQUEST PROCESSING COMPLETE =====\n');
     }
 });
 
@@ -100,13 +153,11 @@ mongoose.connect(process.env.MONGO_URI, {
 io.on("connection", (socket) => {
     console.log("A user connected:", socket.id);
 
-    // Join a room based on user ID
     socket.on("joinRoom", (userId) => {
         socket.join(userId);
         console.log(`User ${userId} joined room`);
     });
 
-    // Handle disconnection
     socket.on("disconnect", () => {
         console.log("User disconnected:", socket.id);
     });
