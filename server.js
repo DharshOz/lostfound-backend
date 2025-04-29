@@ -50,8 +50,8 @@ const upload = multer({ storage });
 const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
-        user: 'smartcityprojectdl@gmail.com',
-        pass: 'tbnrzmafuxxfnued' // Your new app password here
+        user: 'dharaneeshrajendran2004@gmail.com',
+        pass: 'dyaznluepljrjrcq' // Your new app password here
     },
     pool: true,
     maxConnections: 1,
