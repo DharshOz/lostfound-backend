@@ -51,7 +51,7 @@ const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
         user: 'smartcityprojectdl@gmail.com',
-        pass: 'ivkwgstowhvhgct' // Your new app password here
+        pass: 'tbnrzmafuxxfnued' // Your new app password here
     },
     pool: true,
     maxConnections: 1,
