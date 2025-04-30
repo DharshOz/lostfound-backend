@@ -46,38 +46,78 @@ const storage = new CloudinaryStorage({
 
 const upload = multer({ storage });
 
-// Email Configuration - Using the working approach from your other project
+// Enhanced Email Configuration with detailed logging
 const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
-        user: 'dharaneeshrajendran2004@gmail.com', // Using the email that works in your other project
-        pass: 'dyaznluepljrjrcq' // Using the password that works in your other project
-    }
+        user: 'dharaneeshrajendran2004@gmail.com',
+        pass: 'dyaznluepljrjrcq'
+    },
+    logger: true,
+    debug: true,
+    pool: true,
+    maxConnections: 1,
+    maxMessages: 10
 });
 
-// Verify transporter on startup
+// Verify transporter on startup with more detailed logging
 transporter.verify(function(error, success) {
+    console.log('\n===== SMTP CONNECTION VERIFICATION =====');
     if (error) {
         console.log('❌ SMTP Connection Error:', error);
+        console.log('Error details:', {
+            code: error.code,
+            command: error.command,
+            response: error.response
+        });
+        if (error.code === 'EAUTH') {
+            console.error('⚠️ Critical: Verify your app password at https://myaccount.google.com/apppasswords');
+            console.error('⚠️ Ensure "Less Secure Apps" is enabled at https://myaccount.google.com/lesssecureapps');
+        }
     } else {
         console.log('✅ SMTP Server is ready to take our messages');
+        console.log('SMTP configuration:', {
+            host: transporter.options.host,
+            port: transporter.options.port,
+            secure: transporter.options.secure
+        });
     }
+    console.log('======================================\n');
 });
 
-// Email Sending Endpoint - Simplified and robust
+// Enhanced Email Sending Endpoint with detailed logging
 app.post("/api/send-found-email", async (req, res) => {
-    console.log('\n===== FOUND ITEM EMAIL REQUEST =====');
+    console.log('\n===== FOUND ITEM EMAIL REQUEST RECEIVED =====');
+    console.log('Request received at:', new Date().toISOString());
+    console.log('Request headers:', req.headers);
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
     
     try {
         const { lostPersonEmail, itemName, finderName, finderPhone, locationFound, dateFound, description } = req.body;
 
         if (!lostPersonEmail || !itemName) {
-            console.error('Missing required fields');
-            return res.status(400).json({ error: "Missing required fields" });
+            console.error('❌ Missing required fields');
+            console.error('Missing fields:', {
+                lostPersonEmail: !lostPersonEmail ? 'MISSING' : 'PRESENT',
+                itemName: !itemName ? 'MISSING' : 'PRESENT'
+            });
+            return res.status(400).json({ 
+                error: "Missing required fields",
+                details: {
+                    received: req.body,
+                    required: ['lostPersonEmail', 'itemName']
+                }
+            });
         }
 
+        console.log('\nPreparing email with details:');
+        console.log('Recipient:', lostPersonEmail);
+        console.log('Item:', itemName);
+        console.log('Finder:', finderName);
+        console.log('Phone:', finderPhone);
+
         const mailOptions = {
-            from: '"Lost & Found System" <smartcityprojectdl@gmail.com>',
+            from: '"Lost & Found System" <dharaneeshrajendran2004@gmail.com>',
             to: lostPersonEmail,
             subject: `Your lost item "${itemName}" has been found!`,
             html: `
@@ -101,26 +141,49 @@ app.post("/api/send-found-email", async (req, res) => {
                     </div>
                 </div>
             `,
-            // Priority headers from your working project
             headers: {
                 'X-Priority': '1',
                 'Importance': 'high'
             }
         };
 
-        console.log('Sending email to:', lostPersonEmail);
+        console.log('\nAttempting to send email with options:');
+        console.log('From:', mailOptions.from);
+        console.log('To:', mailOptions.to);
+        console.log('Subject:', mailOptions.subject);
+        
         const info = await transporter.sendMail(mailOptions);
         
-        console.log('✅ Email sent successfully! Message ID:', info.messageId);
-        res.status(200).json({ success: true, messageId: info.messageId });
+        console.log('\n✅ Email sent successfully!');
+        console.log('Message ID:', info.messageId);
+        console.log('Accepted recipients:', info.accepted);
+        console.log('Rejected recipients:', info.rejected);
+        console.log('Response:', info.response);
+        
+        res.status(200).json({ 
+            success: true, 
+            messageId: info.messageId,
+            accepted: info.accepted,
+            response: info.response
+        });
 
     } catch (error) {
-        console.error('❌ Email send error:', error);
+        console.error('\n❌ Email send error:');
+        console.error('Error name:', error.name);
+        console.error('Error message:', error.message);
+        console.error('Error code:', error.code);
+        console.error('Error stack:', error.stack);
+        console.error('Full error object:', JSON.stringify(error, null, 2));
+        
         res.status(500).json({ 
             error: error.message,
-            // Include solution hint from your working project
-            solution: "Check Gmail credentials and ensure 'Less Secure Apps' is enabled"
+            code: error.code,
+            solution: "Check Gmail credentials and ensure 'Less Secure Apps' is enabled",
+            details: process.env.NODE_ENV === 'development' ? error.stack : undefined
         });
+    } finally {
+        console.log('\n===== EMAIL REQUEST PROCESS COMPLETED =====');
+        console.log('Completed at:', new Date().toISOString());
     }
 });
 
@@ -157,39 +220,52 @@ io.on("connection", (socket) => {
     });
 });
 
-// Test Endpoint - Using the same pattern from your working project
+// Enhanced Test Endpoint
 app.get('/api/test-email', async (req, res) => {
+    console.log('\n===== TEST EMAIL REQUEST RECEIVED =====');
     try {
         const testMail = {
-            to: 'smartcityprojectdl@gmail.com',
-            subject: 'TEST EMAIL from Lost & Found',
+            to: 'dharaneeshrajendran2004@gmail.com',
+            subject: 'TEST EMAIL from Lost & Found System',
             html: `<div>
                 <h1>Lost & Found System Test</h1>
                 <p>This email confirms your email settings are working correctly.</p>
                 <p><strong>Server Time:</strong> ${new Date()}</p>
-            </div>`
+            </div>`,
+            headers: {
+                'X-Priority': '1'
+            }
         };
 
-        console.log('Sending test email...');
+        console.log('Sending test email to:', testMail.to);
         const info = await transporter.sendMail(testMail);
+        
+        console.log('Test email sent successfully!');
+        console.log('Message ID:', info.messageId);
         
         res.json({
             success: true,
             message: 'Test email sent successfully',
-            messageId: info.messageId
+            messageId: info.messageId,
+            response: info.response
         });
     } catch (error) {
         console.error('Test email failed:', error);
         res.status(500).json({
-            error: 'Failed to send test email',
-            details: error.message
+            error: error.message,
+            details: process.env.NODE_ENV === 'development' ? error.stack : undefined
         });
+    } finally {
+        console.log('===== TEST EMAIL PROCESS COMPLETED =====');
     }
 });
 
 // Start Server
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-    console.log('Test email endpoint: GET /api/test-email');
+    console.log(`\n🚀 Server running on port ${PORT}`);
+    console.log('Available endpoints:');
+    console.log(`- POST /api/send-found-email`);
+    console.log(`- GET /api/test-email`);
+    console.log(`- Other existing API endpoints`);
 });
