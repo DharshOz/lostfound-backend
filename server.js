@@ -160,34 +160,60 @@ const mongoose = require("mongoose");
  });
  
  // Test Endpoint - Using the same pattern from your working project
- app.get('/api/test-email', async (req, res) => {
-     try {
-         const testMail = {
-             to: 'smartcityprojectdl@gmail.com',
-             subject: 'TEST EMAIL from Lost & Found',
-             html: `<div>
-                 <h1>Lost & Found System Test</h1>
-                 <p>This email confirms your email settings are working correctly.</p>
-                 <p><strong>Server Time:</strong> ${new Date()}</p>
-             </div>`
-         };
- 
-         console.log('Sending test email...');
-         const info = await transporter.sendMail(testMail);
- 
-         res.json({
-             success: true,
-             message: 'Test email sent successfully',
-             messageId: info.messageId
-         });
-     } catch (error) {
-         console.error('Test email failed:', error);
-         res.status(500).json({
-             error: 'Failed to send test email',
-             details: error.message
-         });
-     }
- });
+// Update your lost items route to ensure email is always returned
+// In your lostItem routes file (likely routes/lostItem.js):
+
+// Add this to your GET /api/lostitems/:id route
+router.get('/:id', async (req, res) => {
+    try {
+        const item = await LostItem.findById(req.params.id)
+            .populate('user', 'username email phone') // Make sure to include email
+            .exec();
+        
+        if (!item) {
+            return res.status(404).json({ message: 'Item not found' });
+        }
+
+        if (!item.user || !item.user.email) {
+            return res.status(200).json({
+                ...item.toObject(),
+                emailWarning: 'Owner email not available'
+            });
+        }
+
+        res.json(item);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+
+// Update the email sending endpoint to handle missing emails more gracefully
+app.post("/api/send-found-email", async (req, res) => {
+    console.log('\n===== FOUND ITEM EMAIL REQUEST =====');
+    
+    try {
+        const { lostPersonEmail, itemName } = req.body;
+
+        if (!lostPersonEmail) {
+            return res.status(400).json({ 
+                error: "Owner email not available",
+                warning: "Could not notify owner by email"
+            });
+        }
+
+        if (!itemName) {
+            return res.status(400).json({ error: "Item name is required" });
+        }
+
+        // Rest of your email sending logic...
+    } catch (error) {
+        console.error('❌ Email send error:', error);
+        res.status(500).json({ 
+            error: error.message,
+            warning: "Email notification failed"
+        });
+    }
+});
  
  // Start Server
  const PORT = process.env.PORT || 5000;
