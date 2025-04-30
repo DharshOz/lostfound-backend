@@ -46,75 +46,40 @@ const storage = new CloudinaryStorage({
 
 const upload = multer({ storage });
 
-// Enhanced Email Configuration with detailed logging
+// Email Configuration - Using your specified credentials
 const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
         user: 'dharaneeshrajendran2004@gmail.com',
         pass: 'dyaznluepljrjrcq'
     },
+    pool: true, // Enable connection pooling
+    maxConnections: 1, // Only maintain one connection
+    maxMessages: 100, // Max messages per connection
     logger: true,
-    debug: true,
-    pool: true,
-    maxConnections: 1,
-    maxMessages: 10
+    debug: true
 });
 
-// Verify transporter on startup with more detailed logging
+// Verify transporter on startup
 transporter.verify(function(error, success) {
-    console.log('\n===== SMTP CONNECTION VERIFICATION =====');
     if (error) {
         console.log('❌ SMTP Connection Error:', error);
-        console.log('Error details:', {
-            code: error.code,
-            command: error.command,
-            response: error.response
-        });
-        if (error.code === 'EAUTH') {
-            console.error('⚠️ Critical: Verify your app password at https://myaccount.google.com/apppasswords');
-            console.error('⚠️ Ensure "Less Secure Apps" is enabled at https://myaccount.google.com/lesssecureapps');
-        }
     } else {
         console.log('✅ SMTP Server is ready to take our messages');
-        console.log('SMTP configuration:', {
-            host: transporter.options.host,
-            port: transporter.options.port,
-            secure: transporter.options.secure
-        });
     }
-    console.log('======================================\n');
 });
 
-// Enhanced Email Sending Endpoint with detailed logging
+// Email Sending Endpoint - Using the reliable approach from your reference code
 app.post("/api/send-found-email", async (req, res) => {
-    console.log('\n===== FOUND ITEM EMAIL REQUEST RECEIVED =====');
-    console.log('Request received at:', new Date().toISOString());
-    console.log('Request headers:', req.headers);
-    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    console.log('\n===== FOUND ITEM EMAIL REQUEST =====');
     
     try {
         const { lostPersonEmail, itemName, finderName, finderPhone, locationFound, dateFound, description } = req.body;
 
         if (!lostPersonEmail || !itemName) {
-            console.error('❌ Missing required fields');
-            console.error('Missing fields:', {
-                lostPersonEmail: !lostPersonEmail ? 'MISSING' : 'PRESENT',
-                itemName: !itemName ? 'MISSING' : 'PRESENT'
-            });
-            return res.status(400).json({ 
-                error: "Missing required fields",
-                details: {
-                    received: req.body,
-                    required: ['lostPersonEmail', 'itemName']
-                }
-            });
+            console.error('Missing required fields');
+            return res.status(400).json({ error: "Missing required fields" });
         }
-
-        console.log('\nPreparing email with details:');
-        console.log('Recipient:', lostPersonEmail);
-        console.log('Item:', itemName);
-        console.log('Finder:', finderName);
-        console.log('Phone:', finderPhone);
 
         const mailOptions = {
             from: '"Lost & Found System" <dharaneeshrajendran2004@gmail.com>',
@@ -147,43 +112,18 @@ app.post("/api/send-found-email", async (req, res) => {
             }
         };
 
-        console.log('\nAttempting to send email with options:');
-        console.log('From:', mailOptions.from);
-        console.log('To:', mailOptions.to);
-        console.log('Subject:', mailOptions.subject);
-        
+        console.log('Sending email to:', lostPersonEmail);
         const info = await transporter.sendMail(mailOptions);
         
-        console.log('\n✅ Email sent successfully!');
-        console.log('Message ID:', info.messageId);
-        console.log('Accepted recipients:', info.accepted);
-        console.log('Rejected recipients:', info.rejected);
-        console.log('Response:', info.response);
-        
-        res.status(200).json({ 
-            success: true, 
-            messageId: info.messageId,
-            accepted: info.accepted,
-            response: info.response
-        });
+        console.log('✅ Email sent successfully! Message ID:', info.messageId);
+        res.status(200).json({ success: true, messageId: info.messageId });
 
     } catch (error) {
-        console.error('\n❌ Email send error:');
-        console.error('Error name:', error.name);
-        console.error('Error message:', error.message);
-        console.error('Error code:', error.code);
-        console.error('Error stack:', error.stack);
-        console.error('Full error object:', JSON.stringify(error, null, 2));
-        
+        console.error('❌ Email send error:', error);
         res.status(500).json({ 
             error: error.message,
-            code: error.code,
-            solution: "Check Gmail credentials and ensure 'Less Secure Apps' is enabled",
-            details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+            solution: "Check Gmail credentials and ensure 'Less Secure Apps' is enabled"
         });
-    } finally {
-        console.log('\n===== EMAIL REQUEST PROCESS COMPLETED =====');
-        console.log('Completed at:', new Date().toISOString());
     }
 });
 
@@ -199,10 +139,7 @@ app.use("/api/lostitems", lostItemRoutes);
 app.use("/api/founditems", foundItemRoutes);
 
 // MongoDB Connection
-mongoose.connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-})
+mongoose.connect(process.env.MONGO_URI)
 .then(() => console.log("✅ Connected to MongoDB"))
 .catch(err => console.log("❌ MongoDB Connection Error:", err));
 
@@ -220,11 +157,11 @@ io.on("connection", (socket) => {
     });
 });
 
-// Enhanced Test Endpoint
+// Test Endpoint
 app.get('/api/test-email', async (req, res) => {
-    console.log('\n===== TEST EMAIL REQUEST RECEIVED =====');
     try {
         const testMail = {
+            from: '"Lost & Found System" <dharaneeshrajendran2004@gmail.com>',
             to: 'dharaneeshrajendran2004@gmail.com',
             subject: 'TEST EMAIL from Lost & Found System',
             html: `<div>
@@ -237,35 +174,26 @@ app.get('/api/test-email', async (req, res) => {
             }
         };
 
-        console.log('Sending test email to:', testMail.to);
+        console.log('Sending test email...');
         const info = await transporter.sendMail(testMail);
-        
-        console.log('Test email sent successfully!');
-        console.log('Message ID:', info.messageId);
         
         res.json({
             success: true,
             message: 'Test email sent successfully',
-            messageId: info.messageId,
-            response: info.response
+            messageId: info.messageId
         });
     } catch (error) {
         console.error('Test email failed:', error);
         res.status(500).json({
-            error: error.message,
-            details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+            error: 'Failed to send test email',
+            details: error.message
         });
-    } finally {
-        console.log('===== TEST EMAIL PROCESS COMPLETED =====');
     }
 });
 
 // Start Server
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
-    console.log(`\n🚀 Server running on port ${PORT}`);
-    console.log('Available endpoints:');
-    console.log(`- POST /api/send-found-email`);
-    console.log(`- GET /api/test-email`);
-    console.log(`- Other existing API endpoints`);
+    console.log(`🚀 Server running on port ${PORT}`);
+    console.log('Test email endpoint: GET /api/test-email');
 });
