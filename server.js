@@ -46,16 +46,16 @@ const storage = new CloudinaryStorage({
 
 const upload = multer({ storage });
 
-// Email Configuration - Using your specified credentials
+// Email Configuration
 const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
         user: 'dharaneeshrajendran2004@gmail.com',
         pass: 'dyaznluepljrjrcq'
     },
-    pool: true, // Enable connection pooling
-    maxConnections: 1, // Only maintain one connection
-    maxMessages: 100, // Max messages per connection
+    pool: true,
+    maxConnections: 1,
+    maxMessages: 100,
     logger: true,
     debug: true
 });
@@ -69,7 +69,7 @@ transporter.verify(function(error, success) {
     }
 });
 
-// Email Sending Endpoint - Using the reliable approach from your reference code
+// Email Sending Endpoint
 app.post("/api/send-found-email", async (req, res) => {
     console.log('\n===== FOUND ITEM EMAIL REQUEST =====');
     
